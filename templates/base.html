@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Blockbusters{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .sidebar .nav-link { color: #adb5bd; padding: .6rem 1rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,.1); border-radius: .375rem; }
+        .stat-card { border-left: 4px solid; }
+        .stat-card.blue { border-color: #0d6efd; }
+        .stat-card.green { border-color: #198754; }
+        .stat-card.orange { border-color: #fd7e14; }
+        .stat-card.red { border-color: #dc3545; }
+        .stat-card.purple { border-color: #6f42c1; }
+        .thumbnail-placeholder { width: 200px; height: 280px; background: #2c3034; display: flex; align-items: center; justify-content: center; border-radius: .5rem; color: #6c757d; font-size: 3rem; }
+        .table-scroll { max-height: 70vh; overflow-y: auto; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if current_user %}
+<div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="sidebar bg-dark p-3 d-flex flex-column" style="width: 240px;">
+        <a class="d-flex align-items-center mb-3 text-white text-decoration-none" href="/">
+            <span class="fs-4 me-2">🎬</span>
+            <span class="fs-5 fw-semibold">Blockbusters</span>
+        </a>
+        <hr class="text-secondary">
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
+                    📊 Dashboard
+                </a>
+            </li>
+            <li>
+                <a class="nav-link {% if request.endpoint and 'films' in request.endpoint %}active{% endif %}" href="{{ url_for('films.index') }}">
+                    🎥 Films
+                </a>
+            </li>
+            <li>
+                <a class="nav-link {% if request.endpoint and 'rentals' in request.endpoint %}active{% endif %}" href="{{ url_for('rentals.index') }}">
+                    📀 Rentals
+                </a>
+            </li>
+            {% if current_user.role in ('admin', 'staff') %}
+            <li>
+                <a class="nav-link {% if request.endpoint and 'customers' in request.endpoint %}active{% endif %}" href="{{ url_for('customers.index') }}">
+                    👥 Customers
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.role == 'admin' %}
+            <li>
+                <a class="nav-link {% if request.endpoint and 'staff' in request.endpoint %}active{% endif %}" href="{{ url_for('staff.index') }}">
+                    🪪 Staff
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        <hr class="text-secondary">
+        <div class="d-flex align-items-center text-white">
+            <span class="me-2">👤</span>
+            <div class="me-auto">
+                <small>{{ current_user.username }}</small><br>
+                <small class="text-secondary">{{ current_user.role }}</small>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="text-secondary text-decoration-none" title="Logout">🚪</a>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="flex-grow-1 p-4" style="min-height: 100vh;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% else %}
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show mt-3" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+    {% block content_noauth %}{% endblock %}
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

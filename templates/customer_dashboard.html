@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard - Blockbusters{% endblock %}
+{% block content %}
+<h3 class="mb-4">📊 My Dashboard</h3>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card blue">
+            <div class="card-body">
+                <div class="text-secondary small">🔄 Active Rentals</div>
+                <div class="fs-3 fw-bold">{{ active_rentals|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card green">
+            <div class="card-body">
+                <div class="text-secondary small">📀 Total Rentals</div>
+                <div class="fs-3 fw-bold">{{ history_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card purple">
+            <div class="card-body">
+                <div class="text-secondary small">💰 Total Spent</div>
+                <div class="fs-3 fw-bold">${{ "%.2f"|format(total_spent) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if active_rentals %}
+<h5>🎞️ Currently Rented</h5>
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-dark">
+            <tr><th>Film</th><th>Rented On</th></tr>
+        </thead>
+        <tbody>
+            {% for r in active_rentals %}
+            <tr>
+                <td>{{ r.title }}</td>
+                <td>{{ r.rental_date.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">🍿 You have no active rentals. <a href="{{ url_for('films.index') }}">Browse films</a> to find something to watch!</div>
+{% endif %}
+{% endblock %}

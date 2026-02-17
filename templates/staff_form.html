@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if editing else 'Add' }} Staff - Blockbusters{% endblock %}
+{% block content %}
+<a href="{{ url_for('staff.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back</a>
+<h3>🪪 {{ 'Edit' if editing else 'Add' }} Staff Member</h3>
+
+<div class="card mt-3" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">First Name</label>
+                    <input type="text" name="first_name" class="form-control" value="{{ member.first_name if editing else '' }}" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" name="last_name" class="form-control" value="{{ member.last_name if editing else '' }}" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" value="{{ member.email if editing else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Store</label>
+                <select name="store_id" class="form-select">
+                    {% for s in stores %}
+                    <option value="{{ s.store_id }}" {% if editing and member.store_id == s.store_id %}selected{% endif %}>Store {{ s.store_id }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if editing %}
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="active" class="form-check-input" id="active" {% if member.active %}checked{% endif %}>
+                <label class="form-check-label" for="active">Active</label>
+            </div>
+            {% else %}
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" name="username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" required>
+                <div class="form-text">Min 8 chars, uppercase, lowercase, digit, special character.</div>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">{{ 'Update' if editing else 'Add' }} Staff Member</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

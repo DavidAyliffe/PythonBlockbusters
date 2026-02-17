@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Blockbusters{% endblock %}
+{% block content %}
+<h3 class="mb-4">📊 Dashboard</h3>
+
+<!-- Stat cards -->
+<div class="row g-3 mb-4" id="statCards">
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card blue">
+            <div class="card-body py-2">
+                <div class="text-secondary small">📅 Today's Rentals</div>
+                <div class="fs-4 fw-bold" id="todayRentals">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card green">
+            <div class="card-body py-2">
+                <div class="text-secondary small">💰 Today's Revenue</div>
+                <div class="fs-4 fw-bold" id="todayRevenue">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card orange">
+            <div class="card-body py-2">
+                <div class="text-secondary small">🔄 Active Rentals</div>
+                <div class="fs-4 fw-bold" id="activeRentals">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card red">
+            <div class="card-body py-2">
+                <div class="text-secondary small">⚠️ Overdue</div>
+                <div class="fs-4 fw-bold" id="overdueRentals">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card purple">
+            <div class="card-body py-2">
+                <div class="text-secondary small">💵 Total Revenue</div>
+                <div class="fs-4 fw-bold" id="totalRevenue">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="card stat-card blue">
+            <div class="card-body py-2">
+                <div class="text-secondary small">📀 Total Rentals</div>
+                <div class="fs-4 fw-bold" id="totalRentals">—</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body py-2 d-flex justify-content-between">
+                <span class="text-secondary">👥 Customers</span>
+                <span class="fw-bold" id="totalCustomers">—</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body py-2 d-flex justify-content-between">
+                <span class="text-secondary">🎥 Films</span>
+                <span class="fw-bold" id="totalFilms">—</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body py-2 d-flex justify-content-between">
+                <span class="text-secondary">📦 Inventory</span>
+                <span class="fw-bold" id="totalInventory">—</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">🏆 Top 10 Most Popular Films</div>
+            <div class="card-body">
+                <canvas id="topFilmsChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">📁 Rentals by Category</div>
+            <div class="card-body">
+                <canvas id="categoryChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">📈 Revenue Trend</div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">⭐ Inventory by Rating</div>
+            <div class="card-body">
+                <canvas id="ratingChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+const COLORS = ['#0d6efd','#198754','#fd7e14','#dc3545','#6f42c1','#20c997','#0dcaf0','#ffc107','#d63384','#6610f2',
+                '#adb5bd','#e9967a','#87ceeb','#dda0dd','#90ee90','#f0e68c'];
+
+fetch('/api/dashboard/stats')
+    .then(r => r.json())
+    .then(d => {
+        document.getElementById('todayRentals').textContent = d.today_rentals;
+        document.getElementById('todayRevenue').textContent = '$' + d.today_revenue.toFixed(2);
+        document.getElementById('activeRentals').textContent = d.active_rentals;
+        document.getElementById('overdueRentals').textContent = d.overdue_rentals;
+        document.getElementById('totalRevenue').textContent = '$' + d.total_revenue.toFixed(2);
+        document.getElementById('totalRentals').textContent = d.total_rentals;
+        document.getElementById('totalCustomers').textContent = d.total_customers;
+        document.getElementById('totalFilms').textContent = d.total_films;
+        document.getElementById('totalInventory').textContent = d.total_inventory;
+
+        // Top Films bar chart
+        new Chart(document.getElementById('topFilmsChart'), {
+            type: 'bar',
+            data: {
+                labels: d.top_films.map(f => f.title),
+                datasets: [{
+                    label: 'Rentals',
+                    data: d.top_films.map(f => f.rentals),
+                    backgroundColor: COLORS.slice(0, d.top_films.length),
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+
+        // Category doughnut
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'doughnut',
+            data: {
+                labels: d.by_category.map(c => c.category),
+                datasets: [{
+                    data: d.by_category.map(c => c.rentals),
+                    backgroundColor: COLORS.slice(0, d.by_category.length),
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+            }
+        });
+
+        // Revenue trend line
+        const revData = d.revenue_trend.reverse();
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'line',
+            data: {
+                labels: revData.map(r => r.day),
+                datasets: [{
+                    label: 'Revenue ($)',
+                    data: revData.map(r => r.total),
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13,110,253,.1)',
+                    fill: true, tension: 0.3,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Rating pie
+        new Chart(document.getElementById('ratingChart'), {
+            type: 'pie',
+            data: {
+                labels: d.by_rating.map(r => r.rating),
+                datasets: [{
+                    data: d.by_rating.map(r => r.count),
+                    backgroundColor: COLORS.slice(0, d.by_rating.length),
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+            }
+        });
+    });
+</script>
+{% endblock %}

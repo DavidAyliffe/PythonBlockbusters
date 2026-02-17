@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Films - Blockbusters{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>🎥 Films</h3>
+    <span class="badge bg-secondary">{{ films|length }} results</span>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" class="form-control" placeholder="Title or description..." value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All</option>
+                    {% for c in categories %}
+                    <option value="{{ c.name }}" {% if sel_category == c.name %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Rating</label>
+                <select name="rating" class="form-select">
+                    <option value="">All</option>
+                    {% for r in ratings %}
+                    <option value="{{ r.rating }}" {% if sel_rating == r.rating %}selected{% endif %}>{{ r.rating }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Year</label>
+                <select name="year" class="form-select">
+                    <option value="">All</option>
+                    {% for y in years %}
+                    <option value="{{ y.release_year }}" {% if sel_year == y.release_year|string %}selected{% endif %}>{{ y.release_year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary me-2" type="submit"><i class="bi bi-search me-1"></i>Filter</button>
+                <a href="{{ url_for('films.index') }}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Film list -->
+<div class="table-scroll">
+    <table class="table table-hover">
+        <thead class="table-dark sticky-top">
+            <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Rating</th>
+                <th>Year</th>
+                <th>Length</th>
+                <th>Rental Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in films %}
+            <tr style="cursor:pointer" onclick="window.location='{{ url_for('films.detail', film_id=f.film_id) }}'">
+                <td><strong>{{ f.title }}</strong></td>
+                <td>{{ f.category or '—' }}</td>
+                <td><span class="badge bg-info">{{ f.rating }}</span></td>
+                <td>{{ f.release_year }}</td>
+                <td>{{ f.length }} min</td>
+                <td>${{ "%.2f"|format(f.rental_rate) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-secondary">🔍 No films found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

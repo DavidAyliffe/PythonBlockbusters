@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Rentals - Blockbusters{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>📀 Rentals</h3>
+    {% if current_user.role in ('admin', 'staff') %}
+    <a href="{{ url_for('rentals.new_rental') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New Rental</a>
+    {% endif %}
+</div>
+
+{% if current_user.role in ('admin', 'staff') %}
+<form method="GET" class="mb-3">
+    <div class="input-group" style="max-width: 400px;">
+        <input type="text" name="search" class="form-control" placeholder="Search by film or customer..." value="{{ search }}">
+        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+    </div>
+</form>
+{% endif %}
+
+<div class="table-scroll">
+    <table class="table table-hover">
+        <thead class="table-dark sticky-top">
+            <tr>
+                <th>ID</th>
+                <th>Film</th>
+                {% if current_user.role in ('admin', 'staff') %}
+                <th>Customer</th>
+                {% endif %}
+                <th>Store</th>
+                <th>Rented</th>
+                <th>Returned</th>
+                <th>Status</th>
+                {% if current_user.role in ('admin', 'staff') %}
+                <th>Action</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rentals %}
+            <tr>
+                <td>{{ r.rental_id }}</td>
+                <td><a href="{{ url_for('films.detail', film_id=r.film_id) }}">{{ r.title }}</a></td>
+                {% if current_user.role in ('admin', 'staff') %}
+                <td>{{ r.customer_name }}</td>
+                {% endif %}
+                <td>Store {{ r.store_id }}</td>
+                <td>{{ r.rental_date.strftime('%Y-%m-%d %H:%M') if r.rental_date else '—' }}</td>
+                <td>{{ r.return_date.strftime('%Y-%m-%d %H:%M') if r.return_date else '—' }}</td>
+                <td>
+                    {% if r.return_date %}
+                    <span class="badge bg-success">✅ Returned</span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark">🔄 Active</span>
+                    {% endif %}
+                </td>
+                {% if current_user.role in ('admin', 'staff') %}
+                <td>
+                    {% if not r.return_date %}
+                    <form method="POST" action="{{ url_for('rentals.return_rental', rid=r.rental_id) }}" class="d-inline"
+                          onsubmit="return confirm('Return this rental?')">
+                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg me-1"></i>Return</button>
+                    </form>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-secondary">No rentals found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

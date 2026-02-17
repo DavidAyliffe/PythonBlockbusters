@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}New Rental - Blockbusters{% endblock %}
+{% block content %}
+<a href="{{ url_for('rentals.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back</a>
+<h3>📀 New Rental</h3>
+
+<div class="card mt-3" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="POST" id="rentalForm">
+            <div class="mb-3">
+                <label class="form-label">Customer</label>
+                <select name="customer_id" class="form-select" id="customerSelect" required>
+                    <option value="">Select customer...</option>
+                    {% for c in customers %}
+                    <option value="{{ c.customer_id }}">{{ c.first_name }} {{ c.last_name }} ({{ c.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Film</label>
+                <select name="film_id" class="form-select" id="filmSelect" required>
+                    <option value="">Select film...</option>
+                    {% for f in films %}
+                    <option value="{{ f.film_id }}">{{ f.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Store</label>
+                <select name="store_id" class="form-select" id="storeSelect" required>
+                    <option value="">Select store...</option>
+                    {% for s in stores %}
+                    <option value="{{ s.store_id }}">Store {{ s.store_id }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="availabilityInfo" class="mb-3" style="display:none;">
+                <div class="alert alert-info mb-0" id="availabilityMsg"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Create Rental</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const filmSel = document.getElementById('filmSelect');
+const storeSel = document.getElementById('storeSelect');
+const infoDiv = document.getElementById('availabilityInfo');
+const infoMsg = document.getElementById('availabilityMsg');
+const submitBtn = document.getElementById('submitBtn');
+
+function checkAvailability() {
+    const filmId = filmSel.value;
+    const storeId = storeSel.value;
+    if (!filmId || !storeId) { infoDiv.style.display = 'none'; return; }
+    fetch(`/api/inventory/${filmId}/${storeId}`)
+        .then(r => r.json())
+        .then(data => {
+            infoDiv.style.display = 'block';
+            if (data.available > 0) {
+                infoMsg.className = 'alert alert-success mb-0';
+                infoMsg.textContent = `${data.available} cop${data.available === 1 ? 'y' : 'ies'} available.`;
+                submitBtn.disabled = false;
+            } else {
+                infoMsg.className = 'alert alert-danger mb-0';
+                infoMsg.textContent = 'No copies available at this store.';
+                submitBtn.disabled = true;
+            }
+        });
+}
+filmSel.addEventListener('change', checkAvailability);
+storeSel.addEventListener('change', checkAvailability);
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Staff - Blockbusters{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>🪪 Staff</h3>
+    <a href="{{ url_for('staff.add') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Staff</a>
+</div>
+
+<div class="table-scroll">
+    <table class="table table-hover">
+        <thead class="table-dark sticky-top">
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Username</th>
+                <th>Store</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in members %}
+            <tr>
+                <td>{{ m.staff_id }}</td>
+                <td>{{ m.first_name }} {{ m.last_name }}</td>
+                <td>{{ m.email }}</td>
+                <td>{{ m.username or '—' }}</td>
+                <td>Store {{ m.store_id }}</td>
+                <td>
+                    {% if m.active %}
+                    <span class="badge bg-success">✅ Active</span>
+                    {% else %}
+                    <span class="badge bg-secondary">⏸️ Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('staff.edit', sid=m.staff_id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <form method="POST" action="{{ url_for('staff.delete', sid=m.staff_id) }}" class="d-inline"
+                          onsubmit="return confirm('Deactivate this staff member?')">
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-secondary">No staff found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

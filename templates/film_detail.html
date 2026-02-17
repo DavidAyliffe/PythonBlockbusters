@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ film.title }} - Blockbusters{% endblock %}
+{% block content %}
+<a href="{{ url_for('films.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Films</a>
+
+<div class="row">
+    <!-- Thumbnail -->
+    <div class="col-md-3">
+        <img src="{{ url_for('static', filename='thumbnails/' ~ film.film_id ~ '.jpg') }}"
+             class="img-fluid rounded shadow"
+             style="max-width: 100%;"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="thumbnail-placeholder" style="display:none;">
+            <i class="bi bi-film"></i>
+        </div>
+    </div>
+
+    <!-- Details -->
+    <div class="col-md-9">
+        <h2>{{ film.title }}</h2>
+        <div class="mb-3">
+            <span class="badge bg-info me-1">{{ film.rating }}</span>
+            <span class="badge bg-secondary me-1">{{ film.release_year }}</span>
+            <span class="badge bg-secondary me-1">{{ film.length }} min</span>
+            <span class="badge bg-secondary">{{ film.category or 'Uncategorized' }}</span>
+        </div>
+
+        <p>{{ film.description }}</p>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><th>Language</th><td>{{ film.language }}</td></tr>
+                    <tr><th>Rental Duration</th><td>{{ film.rental_duration }} days</td></tr>
+                    <tr><th>Rental Rate</th><td>${{ "%.2f"|format(film.rental_rate) }}</td></tr>
+                    <tr><th>Replacement Cost</th><td>${{ "%.2f"|format(film.replacement_cost) }}</td></tr>
+                    <tr><th>Special Features</th><td>{{ film.special_features or '—' }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Cast -->
+        <h5>🎭 Cast</h5>
+        <div class="mb-3">
+            {% for a in actors %}
+            <span class="badge bg-dark me-1 mb-1">{{ a.first_name }} {{ a.last_name }}</span>
+            {% else %}
+            <span class="text-secondary">No cast information.</span>
+            {% endfor %}
+        </div>
+
+        <!-- Inventory / Availability -->
+        <h5>🏪 Store Availability</h5>
+        <table class="table table-sm">
+            <thead>
+                <tr><th>Store</th><th>Location</th><th>Total Copies</th><th>Available</th></tr>
+            </thead>
+            <tbody>
+                {% for inv in inventory %}
+                <tr>
+                    <td>Store {{ inv.store_id }}</td>
+                    <td>{{ inv.store_address }}, {{ inv.city }}</td>
+                    <td>{{ inv.total_copies }}</td>
+                    <td>
+                        {% if inv.available > 0 %}
+                        <span class="text-success">✅ {{ inv.available }} available</span>
+                        {% else %}
+                        <span class="text-danger">❌ Out of stock</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-secondary">No inventory records.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
