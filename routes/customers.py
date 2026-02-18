@@ -25,6 +25,80 @@ def index():
     return render_template("customers.html", customers=customers, search=search)
 
 
+@customers_bp.route("/customers/<int:cid>")
+@role_required("admin", "staff")
+def detail(cid):
+    customer = query(
+        """SELECT c.*, s.name AS store_name,
+                  a.address, ci.city
+           FROM customer c
+           JOIN store s ON c.store_id = s.store_id
+           JOIN address a ON c.address_id = a.address_id
+           JOIN city ci ON a.city_id = ci.city_id
+           WHERE c.customer_id = %s""",
+        (cid,), one=True,
+    )
+    if not customer:
+        return "Customer not found", 404
+
+    total_rentals = query(
+        "SELECT COUNT(*) AS cnt FROM rental WHERE customer_id = %s",
+        (cid,), one=True,
+    )
+    active_rentals = query(
+        "SELECT COUNT(*) AS cnt FROM rental WHERE customer_id = %s AND returned_date IS NULL",
+        (cid,), one=True,
+    )
+    total_spent = query(
+        "SELECT COALESCE(SUM(amount), 0) AS total FROM payment WHERE customer_id = %s",
+        (cid,), one=True,
+    )
+    favorite_category = query(
+        """SELECT c.name AS category, COUNT(*) AS cnt
+           FROM rental r
+           JOIN inventory i ON r.inventory_id = i.inventory_id
+           JOIN film_category fc ON i.film_id = fc.film_id
+           JOIN category c ON fc.category_id = c.category_id
+           WHERE r.customer_id = %s
+           GROUP BY c.category_id, c.name
+           ORDER BY cnt DESC LIMIT 1""",
+        (cid,), one=True,
+    )
+    rentals = query(
+        """SELECT r.rental_id, r.rental_date, r.returned_date,
+                  f.title, f.film_id,
+                  COALESCE(p.amount, 0) AS amount
+           FROM rental r
+           JOIN inventory i ON r.inventory_id = i.inventory_id
+           JOIN film f ON i.film_id = f.film_id
+           LEFT JOIN payment p ON p.rental_id = r.rental_id
+           WHERE r.customer_id = %s
+           ORDER BY r.rental_date DESC LIMIT 50""",
+        (cid,),
+    )
+    top_categories = query(
+        """SELECT c.name AS category, COUNT(*) AS cnt
+           FROM rental r
+           JOIN inventory i ON r.inventory_id = i.inventory_id
+           JOIN film_category fc ON i.film_id = fc.film_id
+           JOIN category c ON fc.category_id = c.category_id
+           WHERE r.customer_id = %s
+           GROUP BY c.category_id, c.name
+           ORDER BY cnt DESC LIMIT 5""",
+        (cid,),
+    )
+
+    return render_template(
+        "customer_detail.html", customer=customer,
+        total_rentals=total_rentals["cnt"] if total_rentals else 0,
+        active_rentals=active_rentals["cnt"] if active_rentals else 0,
+        total_spent=float(total_spent["total"]) if total_spent else 0,
+        favorite_category=favorite_category["category"] if favorite_category else "N/A",
+        rentals=rentals or [],
+        top_categories=top_categories or [],
+    )
+
+
 @customers_bp.route("/customers/add", methods=["GET", "POST"])
 @role_required("admin", "staff")
 def add():

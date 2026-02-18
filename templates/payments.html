@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Payments - Blockbusters{% endblock %}
+{% block content %}
+<h3 class="mb-4">💳 Payment History</h3>
+
+<form method="GET" class="row g-2 mb-3 align-items-end">
+    <div class="col-md-3">
+        <label class="form-label small text-secondary">Search</label>
+        <input type="text" name="search" class="form-control" placeholder="Customer or film..." value="{{ search }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small text-secondary">From</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small text-secondary">To</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit"><i class="bi bi-search me-1"></i>Filter</button>
+    </div>
+    {% if search or date_from or date_to %}
+    <div class="col-md-2">
+        <a href="{{ url_for('payments.index') }}" class="btn btn-outline-secondary w-100">Clear</a>
+    </div>
+    {% endif %}
+</form>
+
+<div class="card mb-3">
+    <div class="card-body py-2 d-flex justify-content-between">
+        <span class="text-secondary">Showing {{ payments|length }} payments</span>
+        <span class="fw-bold">${{ "%.2f"|format(total) }} total</span>
+    </div>
+</div>
+
+<div class="table-scroll">
+    <table class="table table-hover">
+        <thead class="table-dark sticky-top">
+            <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Film</th>
+                <th>Store</th>
+                <th>Amount</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.payment_id }}</td>
+                <td><a href="{{ url_for('customers.detail', cid=p.customer_id) }}">{{ p.customer_name }}</a></td>
+                <td><a href="{{ url_for('films.detail', film_id=p.film_id) }}">{{ p.title }}</a></td>
+                <td>{{ p.store_name|store_icon }} {{ p.store_name }}</td>
+                <td>${{ "%.2f"|format(p.amount) }}</td>
+                <td>{{ p.payment_date.strftime('%Y-%m-%d %H:%M') if p.payment_date else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-secondary">No payments found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

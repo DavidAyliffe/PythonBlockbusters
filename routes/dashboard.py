@@ -46,18 +46,13 @@ def stats():
     if user["role"] == "customer":
         return jsonify({}), 403
 
-    today_rentals = query(
-        "SELECT COUNT(*) AS cnt FROM rental WHERE DATE(rental_date) = CURDATE()", one=True
-    )
-    today_revenue = query(
-        "SELECT COALESCE(SUM(amount),0) AS total FROM payment WHERE DATE(payment_date) = CURDATE()",
-        one=True,
-    )
+    today_rentals = query("SELECT COUNT(*) AS cnt FROM rental WHERE DATE(rental_date) = CURDATE()", one=True)
+    today_revenue = query("SELECT COALESCE(SUM(amount),0) AS total FROM payment WHERE DATE(payment_date) = CURDATE()",one=True)
+    
     total_rentals = query("SELECT COUNT(*) AS cnt FROM rental", one=True)
     total_revenue = query("SELECT COALESCE(SUM(amount),0) AS total FROM payment", one=True)
-    active_rentals = query(
-        "SELECT COUNT(*) AS cnt FROM rental WHERE return_date IS NULL", one=True
-    )
+    
+    active_rentals = query("SELECT COUNT(*) AS cnt FROM rental WHERE returned_date IS NULL", one=True)
     overdue = query(
         """SELECT COUNT(*) AS cnt FROM rental r
            JOIN inventory i ON r.inventory_id = i.inventory_id
@@ -88,16 +83,14 @@ def stats():
            JOIN film_category fc ON i.film_id = fc.film_id
            JOIN category c ON fc.category_id = c.category_id
            GROUP BY c.category_id, c.name
-           ORDER BY rentals DESC"""
-    )
+           ORDER BY rentals DESC""")
 
     # Revenue last 7 days (or months if no recent data)
     revenue_trend = query(
         """SELECT DATE(payment_date) AS day, SUM(amount) AS total
            FROM payment
            GROUP BY DATE(payment_date)
-           ORDER BY day DESC LIMIT 30"""
-    )
+           ORDER BY day DESC LIMIT 30""")
 
     # Rentals by store
     by_store = query(
@@ -105,16 +98,14 @@ def stats():
            FROM rental r
            JOIN inventory i ON r.inventory_id = i.inventory_id
            JOIN store s ON i.store_id = s.store_id
-           GROUP BY s.store_id ORDER BY s.store_id"""
-    )
+           GROUP BY s.store_id ORDER BY s.store_id""")
 
     # Inventory by rating
     by_rating = query(
         """SELECT f.rating, COUNT(i.inventory_id) AS count
            FROM inventory i
            JOIN film f ON i.film_id = f.film_id
-           GROUP BY f.rating ORDER BY count DESC"""
-    )
+           GROUP BY f.rating ORDER BY count DESC""")
 
     return jsonify({
         "today_rentals": today_rentals["cnt"] if today_rentals else 0,

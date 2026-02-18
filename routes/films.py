@@ -89,4 +89,21 @@ def detail(film_id):
         (film_id,),
     )
 
-    return render_template("film_detail.html", film=film, actors=actors, inventory=inventory)
+    recommendations = query(
+        """SELECT f2.film_id, f2.title, COUNT(*) AS overlap
+           FROM rental r1
+           JOIN inventory i1 ON r1.inventory_id = i1.inventory_id
+           JOIN rental r2 ON r1.customer_id = r2.customer_id
+           JOIN inventory i2 ON r2.inventory_id = i2.inventory_id
+           JOIN film f2 ON i2.film_id = f2.film_id
+           WHERE i1.film_id = %s AND f2.film_id != %s
+           GROUP BY f2.film_id, f2.title
+           ORDER BY overlap DESC
+           LIMIT 6""",
+        (film_id, film_id),
+    )
+
+    return render_template(
+        "film_detail.html", film=film, actors=actors,
+        inventory=inventory, recommendations=recommendations or [],
+    )

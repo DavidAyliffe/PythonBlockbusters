@@ -101,20 +101,35 @@ def return_rental(rid):
 
     execute("UPDATE rental SET returned_date = NOW() WHERE rental_id = %s", (rid,))
 
-    # Insert payment
+    # Insert payment with late fee calculation
     film = query(
         """SELECT f.rental_rate, f.rental_duration
            FROM rental r JOIN inventory i ON r.inventory_id = i.inventory_id
            JOIN film f ON i.film_id = f.film_id WHERE r.rental_id = %s""",
         (rid,), one=True,
     )
-    amount = float(film["rental_rate"]) if film else 4.99
+    base_rate = float(film["rental_rate"]) if film else 4.99
+    rental_duration = int(film["rental_duration"]) if film else 3
+
+    from datetime import datetime, timedelta
+    due_date = rental["rental_date"] + timedelta(days=rental_duration)
+    now = datetime.now()
+    days_overdue = max(0, (now - due_date).days)
+    late_fee = days_overdue * 1.00
+    amount = base_rate + late_fee
+
     execute(
         "INSERT INTO payment (customer_id, staff_id, rental_id, amount, payment_date) VALUES (%s, %s, %s, %s, NOW())",
         (rental["customer_id"], rental["staff_id"], rid, amount),
     )
 
-    flash(f"Rental returned. Payment of ${amount:.2f} recorded.", "success")
+    if late_fee > 0:
+        flash(
+            f"Rental returned. Base: ${base_rate:.2f} + Late fee: ${late_fee:.2f} ({days_overdue} days overdue) = ${amount:.2f}",
+            "warning",
+        )
+    else:
+        flash(f"Rental returned. Payment of ${amount:.2f} recorded.", "success")
     return redirect(url_for("rentals.index"))
 
 

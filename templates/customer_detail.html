@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.first_name }} {{ customer.last_name }} - Blockbusters{% endblock %}
+{% block content %}
+<a href="{{ url_for('customers.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Customers</a>
+
+<div class="row mb-4">
+    <div class="col-md-2 text-center">
+        <img src="{{ url_for('static', filename='avatars/' ~ customer.customer_id ~ '.png') }}"
+             alt="{{ customer.first_name }}" class="rounded-circle mb-2" width="100" height="100"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto"
+             style="width:100px; height:100px; display:none!important; font-size:2.5rem; color:#fff;">
+            {{ customer.first_name[0] }}{{ customer.last_name[0] }}
+        </div>
+    </div>
+    <div class="col-md-10">
+        <h2>{{ customer.first_name }} {{ customer.last_name }}</h2>
+        <div class="mb-2">
+            {% if customer.active %}
+            <span class="badge bg-success me-1">✅ Active</span>
+            {% else %}
+            <span class="badge bg-secondary me-1">⏸️ Inactive</span>
+            {% endif %}
+            <span class="badge bg-dark me-1">{{ customer.store_name|store_icon }} {{ customer.store_name }}</span>
+        </div>
+        <table class="table table-sm" style="max-width: 400px;">
+            <tr><th>Email</th><td>{{ customer.email }}</td></tr>
+            <tr><th>Location</th><td>{{ customer.address }}, {{ customer.city }}</td></tr>
+            <tr><th>Member Since</th><td>{{ customer.create_date.strftime('%Y-%m-%d') if customer.create_date else '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card blue">
+            <div class="card-body py-2">
+                <div class="text-secondary small">📀 Total Rentals</div>
+                <div class="fs-4 fw-bold">{{ total_rentals }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card orange">
+            <div class="card-body py-2">
+                <div class="text-secondary small">🔄 Active Rentals</div>
+                <div class="fs-4 fw-bold">{{ active_rentals }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card green">
+            <div class="card-body py-2">
+                <div class="text-secondary small">💰 Total Spent</div>
+                <div class="fs-4 fw-bold">${{ "%.2f"|format(total_spent) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card purple">
+            <div class="card-body py-2">
+                <div class="text-secondary small">⭐ Favorite Category</div>
+                <div class="fs-4 fw-bold">{{ favorite_category }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Categories -->
+{% if top_categories %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">📁 Top Categories</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        {% for cat in top_categories %}
+                        <tr>
+                            <td>{{ cat.category }}</td>
+                            <td class="text-end">
+                                <span class="badge bg-primary">{{ cat.cnt }} rentals</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Rental History -->
+<h5 class="mb-3">📋 Rental History</h5>
+<div class="table-scroll">
+    <table class="table table-hover">
+        <thead class="table-dark sticky-top">
+            <tr>
+                <th>Film</th>
+                <th>Rented</th>
+                <th>Returned</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rentals %}
+            <tr>
+                <td><a href="{{ url_for('films.detail', film_id=r.film_id) }}">{{ r.title }}</a></td>
+                <td>{{ r.rental_date.strftime('%Y-%m-%d %H:%M') if r.rental_date else '—' }}</td>
+                <td>{{ r.returned_date.strftime('%Y-%m-%d %H:%M') if r.returned_date else '—' }}</td>
+                <td>${{ "%.2f"|format(r.amount) }}</td>
+                <td>
+                    {% if r.returned_date %}
+                    <span class="badge bg-success">✅ Returned</span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark">🔄 Active</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-secondary">No rental history.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

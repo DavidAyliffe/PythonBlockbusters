@@ -6,36 +6,44 @@
 <!-- Stat cards -->
 <div class="row g-3 mb-4" id="statCards">
     <div class="col-md-4 col-lg-2">
-        <div class="card stat-card blue">
-            <div class="card-body py-2">
-                <div class="text-secondary small">📅 Today's Rentals</div>
-                <div class="fs-4 fw-bold" id="todayRentals">—</div>
+        <a href="{{ url_for('dashboard.today_rentals') }}" class="text-decoration-none">
+            <div class="card stat-card blue" style="cursor:pointer">
+                <div class="card-body py-2">
+                    <div class="text-secondary small">📅 Today's Rentals</div>
+                    <div class="fs-4 fw-bold" id="todayRentals">—</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-4 col-lg-2">
-        <div class="card stat-card green">
-            <div class="card-body py-2">
-                <div class="text-secondary small">💰 Today's Revenue</div>
-                <div class="fs-4 fw-bold" id="todayRevenue">—</div>
+        <a href="{{ url_for('dashboard.today_revenue') }}" class="text-decoration-none">
+            <div class="card stat-card green" style="cursor:pointer">
+                <div class="card-body py-2">
+                    <div class="text-secondary small">💰 Today's Revenue</div>
+                    <div class="fs-4 fw-bold" id="todayRevenue">—</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-4 col-lg-2">
-        <div class="card stat-card orange">
-            <div class="card-body py-2">
-                <div class="text-secondary small">🔄 Active Rentals</div>
-                <div class="fs-4 fw-bold" id="activeRentals">—</div>
+        <a href="{{ url_for('dashboard.active_rentals') }}" class="text-decoration-none">
+            <div class="card stat-card orange" style="cursor:pointer">
+                <div class="card-body py-2">
+                    <div class="text-secondary small">🔄 Active Rentals</div>
+                    <div class="fs-4 fw-bold" id="activeRentals">—</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-4 col-lg-2">
-        <div class="card stat-card red">
-            <div class="card-body py-2">
-                <div class="text-secondary small">⚠️ Overdue</div>
-                <div class="fs-4 fw-bold" id="overdueRentals">—</div>
+        <a href="{{ url_for('dashboard.overdue_rentals') }}" class="text-decoration-none">
+            <div class="card stat-card red" style="cursor:pointer">
+                <div class="card-body py-2">
+                    <div class="text-secondary small">⚠️ Overdue</div>
+                    <div class="fs-4 fw-bold" id="overdueRentals">—</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-4 col-lg-2">
         <div class="card stat-card purple">
@@ -106,7 +114,16 @@
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
         <div class="card">
-            <div class="card-header">📈 Revenue Trend</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>📈 Revenue Trend</span>
+                <div class="btn-group btn-group-sm" id="revenuePeriodBtns">
+                    <button class="btn btn-outline-primary" data-period="1m">1M</button>
+                    <button class="btn btn-outline-primary" data-period="6m">6M</button>
+                    <button class="btn btn-outline-primary active" data-period="1y">1Y</button>
+                    <button class="btn btn-outline-primary" data-period="5y">5Y</button>
+                    <button class="btn btn-outline-primary" data-period="10y">10Y</button>
+                </div>
+            </div>
             <div class="card-body">
                 <canvas id="revenueChart" height="200"></canvas>
             </div>
@@ -130,7 +147,10 @@ const COLORS = ['#0d6efd','#198754','#fd7e14','#dc3545','#6f42c1','#20c997','#0d
                 '#adb5bd','#e9967a','#87ceeb','#dda0dd','#90ee90','#f0e68c'];
 
 fetch('/api/dashboard/stats')
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error('Failed to load stats');
+        return r.json();
+    })
     .then(d => {
         document.getElementById('todayRentals').textContent = d.today_rentals;
         document.getElementById('todayRevenue').textContent = '$' + d.today_revenue.toFixed(2);
@@ -178,25 +198,41 @@ fetch('/api/dashboard/stats')
             }
         });
 
-        // Revenue trend line
-        const revData = d.revenue_trend.reverse();
-        new Chart(document.getElementById('revenueChart'), {
-            type: 'line',
-            data: {
-                labels: revData.map(r => r.day),
-                datasets: [{
-                    label: 'Revenue ($)',
-                    data: revData.map(r => r.total),
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13,110,253,.1)',
-                    fill: true, tension: 0.3,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
+        // Revenue trend line with period selector
+        let revenueChart = null;
+        function loadRevenueChart(period) {
+            fetch('/api/dashboard/revenue_trend?period=' + period)
+                .then(r => r.json())
+                .then(data => {
+                    const revData = data.reverse();
+                    if (revenueChart) revenueChart.destroy();
+                    revenueChart = new Chart(document.getElementById('revenueChart'), {
+                        type: 'line',
+                        data: {
+                            labels: revData.map(r => r.label),
+                            datasets: [{
+                                label: 'Revenue ($)',
+                                data: revData.map(r => r.total),
+                                borderColor: '#0d6efd',
+                                backgroundColor: 'rgba(13,110,253,.1)',
+                                fill: true, tension: 0.3,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                });
+        }
+        loadRevenueChart('1y');
+        document.getElementById('revenuePeriodBtns').addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-period]');
+            if (!btn) return;
+            this.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadRevenueChart(btn.dataset.period);
         });
 
         // Rating pie
@@ -214,6 +250,10 @@ fetch('/api/dashboard/stats')
                 plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
             }
         });
+    })
+    .catch(err => {
+        console.error('Dashboard stats error:', err);
+        document.querySelectorAll('#statCards .fw-bold').forEach(el => el.textContent = 'Error');
     });
 </script>
 {% endblock %}

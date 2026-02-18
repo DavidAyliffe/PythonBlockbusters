@@ -6,7 +6,7 @@
 <div class="row">
     <!-- Thumbnail -->
     <div class="col-md-3">
-        <img src="{{ url_for('static', filename='thumbnails/' ~ film.film_id ~ '.jpg') }}"
+        <img src="{{ url_for('static', filename='thumbnails/' ~ film.film_id ~ '.png') }}"
              class="img-fluid rounded shadow"
              style="max-width: 100%;"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -76,4 +76,29 @@
         </table>
     </div>
 </div>
+
+<!-- Recommendations -->
+{% if recommendations %}
+<hr class="my-4">
+<h5>🍿 Customers Also Rented</h5>
+<div class="row g-3">
+    {% for rec in recommendations %}
+    <div class="col-md-2 col-sm-4">
+        <a href="{{ url_for('films.detail', film_id=rec.film_id) }}" class="text-decoration-none">
+            <div class="card h-100">
+                <img src="{{ url_for('static', filename='thumbnails/' ~ rec.film_id ~ '.png') }}"
+                     class="card-img-top" alt="{{ rec.title }}"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="thumbnail-placeholder" style="display:none; height:160px; font-size:2rem;">
+                    <i class="bi bi-film"></i>
+                </div>
+                <div class="card-body p-2">
+                    <small class="fw-semibold">{{ rec.title }}</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}
