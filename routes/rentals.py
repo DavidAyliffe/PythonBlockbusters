@@ -1,15 +1,26 @@
+"""
+routes/rentals.py - Rental management routes.
+
+Handles rental listing (role-aware: customers see only their own),
+creating new rentals, processing returns with automatic payment and
+late fee calculation, and an inventory availability API endpoint.
+"""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from routes.auth import login_required, get_current_user, role_required
 from db import query, execute
 
+# Blueprint for rental-related routes
 rentals_bp = Blueprint("rentals", __name__)
 
 
 @rentals_bp.route("/rentals")
 @login_required
 def index():
+    """Display the rental list. Customers see only their own rentals;
+    admin/staff see all rentals with search functionality."""
     user = get_current_user()
     if user["role"] == "customer":
+        # Customer view: show only this customer's rentals
         sql = """
             SELECT r.rental_id, r.rental_date, r.returned_date,
                    f.title, f.film_id, s.store_id,
@@ -24,6 +35,7 @@ def index():
         """
         rentals = query(sql, (user["customer_id"],))
     else:
+        # Admin/staff view: show all rentals with optional search
         search = request.args.get("search", "").strip()
         sql = """
             SELECT r.rental_id, r.rental_date, r.returned_date,
@@ -52,17 +64,21 @@ def index():
 @rentals_bp.route("/rentals/new", methods=["GET", "POST"])
 @role_required("admin", "staff")
 def new_rental():
+    """Create a new rental. GET shows the form; POST processes the rental."""
     if request.method == "POST":
         customer_id = request.form["customer_id"]
         film_id = request.form["film_id"]
         store_id = request.form["store_id"]
 
+        # Determine the staff_id: use the logged-in user's staff_id if available
         user = get_current_user()
         staff_id = user.get("staff_id")
         if not staff_id:
+            # Fallback: pick the first staff member at the selected store
             staff = query("SELECT staff_id FROM staff WHERE store_id = %s LIMIT 1", (store_id,), one=True)
             staff_id = staff["staff_id"] if staff else 1
 
+        # Find an available inventory copy (not currently rented out)
         inv = query(
             """SELECT i.inventory_id
                FROM inventory i
@@ -75,6 +91,7 @@ def new_rental():
             flash("No copies available at this store.", "danger")
             return redirect(url_for("rentals.new_rental"))
 
+        # Insert the rental record
         execute(
             "INSERT INTO rental (rental_date, inventory_id, customer_id, staff_id) VALUES (NOW(), %s, %s, %s)",
             (inv["inventory_id"], customer_id, staff_id),
@@ -82,6 +99,7 @@ def new_rental():
         flash("Rental created successfully.", "success")
         return redirect(url_for("rentals.index"))
 
+    # GET: load form data (customers, films, stores)
     customers = query("SELECT customer_id, first_name, last_name, email FROM customer WHERE active = 1 ORDER BY last_name")
     films = query("SELECT film_id, title FROM film ORDER BY title")
     stores = query("SELECT store_id FROM store ORDER BY store_id")
@@ -91,6 +109,7 @@ def new_rental():
 @rentals_bp.route("/rentals/<int:rid>/return", methods=["POST"])
 @role_required("admin", "staff")
 def return_rental(rid):
+    """Process a rental return: mark it returned, calculate fees, and record payment."""
     rental = query("SELECT * FROM rental WHERE rental_id = %s", (rid,), one=True)
     if not rental:
         flash("Rental not found.", "danger")
@@ -99,9 +118,10 @@ def return_rental(rid):
         flash("Already returned.", "info")
         return redirect(url_for("rentals.index"))
 
+    # Mark the rental as returned
     execute("UPDATE rental SET returned_date = NOW() WHERE rental_id = %s", (rid,))
 
-    # Insert payment with late fee calculation
+    # Look up the film's rental rate and duration for fee calculation
     film = query(
         """SELECT f.rental_rate, f.rental_duration
            FROM rental r JOIN inventory i ON r.inventory_id = i.inventory_id
@@ -111,6 +131,7 @@ def return_rental(rid):
     base_rate = float(film["rental_rate"]) if film else 4.99
     rental_duration = int(film["rental_duration"]) if film else 3
 
+    # Calculate late fee: $1.00 per day overdue
     from datetime import datetime, timedelta
     due_date = rental["rental_date"] + timedelta(days=rental_duration)
     now = datetime.now()
@@ -118,11 +139,13 @@ def return_rental(rid):
     late_fee = days_overdue * 1.00
     amount = base_rate + late_fee
 
+    # Record the payment
     execute(
         "INSERT INTO payment (customer_id, staff_id, rental_id, amount, payment_date) VALUES (%s, %s, %s, %s, NOW())",
         (rental["customer_id"], rental["staff_id"], rid, amount),
     )
 
+    # Show appropriate message based on whether there was a late fee
     if late_fee > 0:
         flash(
             f"Rental returned. Base: ${base_rate:.2f} + Late fee: ${late_fee:.2f} ({days_overdue} days overdue) = ${amount:.2f}",
@@ -136,6 +159,8 @@ def return_rental(rid):
 @rentals_bp.route("/api/inventory/<int:film_id>/<int:store_id>")
 @login_required
 def check_inventory(film_id, store_id):
+    """JSON API endpoint that returns the number of available copies
+    of a film at a specific store. Used by the rental form's AJAX check."""
     row = query(
         """SELECT COUNT(*) AS available
            FROM inventory i

@@ -1,10 +1,17 @@
+<!-- dashboard.html - Admin/staff analytics dashboard.
+     Displays key business metrics in stat cards (today's rentals/revenue,
+     active/overdue rentals, totals) and interactive Chart.js charts
+     (top films, category breakdown, revenue trend, rating distribution).
+     Data is loaded asynchronously via the /api/dashboard/stats endpoint.
+-->
 {% extends "base.html" %}
 {% block title %}Dashboard - Blockbusters{% endblock %}
 {% block content %}
 <h3 class="mb-4">📊 Dashboard</h3>
 
-<!-- Stat cards -->
+<!-- Stat cards row - populated via AJAX from /api/dashboard/stats -->
 <div class="row g-3 mb-4" id="statCards">
+    <!-- Today's Rentals (clickable - links to detail view) -->
     <div class="col-md-4 col-lg-2">
         <a href="{{ url_for('dashboard.today_rentals') }}" class="text-decoration-none">
             <div class="card stat-card blue" style="cursor:pointer">
@@ -15,6 +22,7 @@
             </div>
         </a>
     </div>
+    <!-- Today's Revenue (clickable) -->
     <div class="col-md-4 col-lg-2">
         <a href="{{ url_for('dashboard.today_revenue') }}" class="text-decoration-none">
             <div class="card stat-card green" style="cursor:pointer">
@@ -25,6 +33,7 @@
             </div>
         </a>
     </div>
+    <!-- Active Rentals (clickable) -->
     <div class="col-md-4 col-lg-2">
         <a href="{{ url_for('dashboard.active_rentals') }}" class="text-decoration-none">
             <div class="card stat-card orange" style="cursor:pointer">
@@ -35,6 +44,7 @@
             </div>
         </a>
     </div>
+    <!-- Overdue Rentals (clickable) -->
     <div class="col-md-4 col-lg-2">
         <a href="{{ url_for('dashboard.overdue_rentals') }}" class="text-decoration-none">
             <div class="card stat-card red" style="cursor:pointer">
@@ -45,6 +55,7 @@
             </div>
         </a>
     </div>
+    <!-- Total Revenue (static) -->
     <div class="col-md-4 col-lg-2">
         <div class="card stat-card purple">
             <div class="card-body py-2">
@@ -53,6 +64,7 @@
             </div>
         </div>
     </div>
+    <!-- Total Rentals (static) -->
     <div class="col-md-4 col-lg-2">
         <div class="card stat-card blue">
             <div class="card-body py-2">
@@ -63,7 +75,7 @@
     </div>
 </div>
 
-<!-- Summary row -->
+<!-- Summary row: total customers, films, and inventory items -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card">
@@ -91,7 +103,7 @@
     </div>
 </div>
 
-<!-- Charts -->
+<!-- Charts row 1: Top films (bar chart) and Category breakdown (doughnut) -->
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
         <div class="card">
@@ -111,11 +123,13 @@
     </div>
 </div>
 
+<!-- Charts row 2: Revenue trend (line chart with period selector) and Rating distribution (pie) -->
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>📈 Revenue Trend</span>
+                <!-- Period selector buttons for the revenue chart -->
                 <div class="btn-group btn-group-sm" id="revenuePeriodBtns">
                     <button class="btn btn-outline-primary" data-period="1m">1M</button>
                     <button class="btn btn-outline-primary" data-period="6m">6M</button>
@@ -141,17 +155,21 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chart.js library for rendering charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
+// Colour palette used across all charts for consistency
 const COLORS = ['#0d6efd','#198754','#fd7e14','#dc3545','#6f42c1','#20c997','#0dcaf0','#ffc107','#d63384','#6610f2',
                 '#adb5bd','#e9967a','#87ceeb','#dda0dd','#90ee90','#f0e68c'];
 
+// Fetch all dashboard statistics from the API and populate stat cards + charts
 fetch('/api/dashboard/stats')
     .then(r => {
         if (!r.ok) throw new Error('Failed to load stats');
         return r.json();
     })
     .then(d => {
+        // --- Populate stat card values ---
         document.getElementById('todayRentals').textContent = d.today_rentals;
         document.getElementById('todayRevenue').textContent = '$' + d.today_revenue.toFixed(2);
         document.getElementById('activeRentals').textContent = d.active_rentals;
@@ -162,7 +180,7 @@ fetch('/api/dashboard/stats')
         document.getElementById('totalFilms').textContent = d.total_films;
         document.getElementById('totalInventory').textContent = d.total_inventory;
 
-        // Top Films bar chart
+        // --- Top Films horizontal bar chart ---
         new Chart(document.getElementById('topFilmsChart'), {
             type: 'bar',
             data: {
@@ -175,14 +193,14 @@ fetch('/api/dashboard/stats')
                 }]
             },
             options: {
-                indexAxis: 'y',
+                indexAxis: 'y',  // Horizontal bars
                 responsive: true,
                 plugins: { legend: { display: false } },
                 scales: { x: { beginAtZero: true } }
             }
         });
 
-        // Category doughnut
+        // --- Category doughnut chart ---
         new Chart(document.getElementById('categoryChart'), {
             type: 'doughnut',
             data: {
@@ -198,14 +216,15 @@ fetch('/api/dashboard/stats')
             }
         });
 
-        // Revenue trend line with period selector
+        // --- Revenue trend line chart with period selector ---
         let revenueChart = null;
         function loadRevenueChart(period) {
+            // Fetch revenue data for the selected time period
             fetch('/api/dashboard/revenue_trend?period=' + period)
                 .then(r => r.json())
                 .then(data => {
-                    const revData = data.reverse();
-                    if (revenueChart) revenueChart.destroy();
+                    const revData = data.reverse();  // Chronological order
+                    if (revenueChart) revenueChart.destroy();  // Destroy previous chart instance
                     revenueChart = new Chart(document.getElementById('revenueChart'), {
                         type: 'line',
                         data: {
@@ -226,16 +245,19 @@ fetch('/api/dashboard/stats')
                     });
                 });
         }
+        // Load the default 1-year view
         loadRevenueChart('1y');
+        // Handle period button clicks
         document.getElementById('revenuePeriodBtns').addEventListener('click', function(e) {
             const btn = e.target.closest('[data-period]');
             if (!btn) return;
+            // Update active button styling
             this.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             loadRevenueChart(btn.dataset.period);
         });
 
-        // Rating pie
+        // --- Rating distribution pie chart ---
         new Chart(document.getElementById('ratingChart'), {
             type: 'pie',
             data: {
@@ -252,6 +274,7 @@ fetch('/api/dashboard/stats')
         });
     })
     .catch(err => {
+        // Show error state on all stat cards if the API call fails
         console.error('Dashboard stats error:', err);
         document.querySelectorAll('#statCards .fw-bold').forEach(el => el.textContent = 'Error');
     });

@@ -1,4 +1,16 @@
-"""Generate PNG thumbnail posters for every film in the database."""
+"""
+generate_thumbnails.py - Generates PNG poster thumbnails for every film.
+
+Each thumbnail features:
+  - A vertical gradient background coloured by film category.
+  - Random decorative geometric shapes for visual variety.
+  - The film title (word-wrapped) at the bottom.
+  - The release year below the title.
+  - A colour-coded rating badge (G, PG, PG-13, R, NC-17) in the top-right corner.
+
+Thumbnails are deterministic: the same film title always produces the same design.
+Output directory: static/thumbnails/<film_id>.png
+"""
 import json
 import os
 import hashlib
@@ -6,10 +18,13 @@ import pymysql
 import pymysql.cursors
 from PIL import Image, ImageDraw, ImageFont
 
+# Output directory for generated thumbnails
 THUMB_DIR = os.path.join(os.path.dirname(__file__), "static", "thumbnails")
+
+# Thumbnail dimensions in pixels
 WIDTH, HEIGHT = 200, 300
 
-# Category -> colour palette (gradient top, gradient bottom)
+# Colour palettes per film category (gradient top colour, gradient bottom colour)
 CATEGORY_COLORS = {
     "Action":           ((180, 30, 30),   (80, 10, 10)),
     "Adult":            ((100, 20, 60),   (50, 10, 30)),
@@ -32,23 +47,27 @@ CATEGORY_COLORS = {
     "War":              ((80, 70, 50),    (40, 35, 20)),
     "Westerns":         ((160, 110, 50),  (90, 60, 20)),
 }
+# Fallback colours for films with no/unknown category
 DEFAULT_COLORS = ((70, 70, 90), (35, 35, 50))
 
+# Badge background colours for each MPAA rating
 RATING_BADGE = {
-    "G":     (76, 175, 80),
-    "PG":    (33, 150, 243),
-    "PG-13": (255, 152, 0),
-    "R":     (244, 67, 54),
-    "NC-17": (156, 39, 176),
+    "G":     (76, 175, 80),    # green
+    "PG":    (33, 150, 243),   # blue
+    "PG-13": (255, 152, 0),    # orange
+    "R":     (244, 67, 54),    # red
+    "NC-17": (156, 39, 176),   # purple
 }
 
 
 def _seed_from_title(title):
-    """Deterministic seed so the same film always gets the same design."""
+    """Create a deterministic integer seed from a film title,
+    ensuring the same title always produces the same design."""
     return int(hashlib.md5(title.encode()).hexdigest(), 16)
 
 
 def _draw_gradient(draw, top_color, bot_color, width, height):
+    """Draw a vertical colour gradient from top_color to bot_color."""
     for y in range(height):
         ratio = y / height
         r = int(top_color[0] + (bot_color[0] - top_color[0]) * ratio)
@@ -58,11 +77,11 @@ def _draw_gradient(draw, top_color, bot_color, width, height):
 
 
 def _draw_decorative_shapes(draw, seed, top_color, width, height):
-    """Add some geometric shapes for visual interest."""
+    """Add random semi-transparent circles and diagonal lines for visual interest."""
     import random
     rng = random.Random(seed)
 
-    # Draw a few circles / ellipses
+    # Draw a few semi-transparent ellipses
     for _ in range(rng.randint(2, 5)):
         cx = rng.randint(-30, width + 30)
         cy = rng.randint(40, height - 80)
@@ -77,7 +96,7 @@ def _draw_decorative_shapes(draw, seed, top_color, width, height):
         )
         draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=color)
 
-    # Draw a few diagonal lines
+    # Draw a few subtle diagonal lines
     for _ in range(rng.randint(1, 3)):
         x1 = rng.randint(-20, width)
         y1 = rng.randint(0, height)
@@ -89,7 +108,8 @@ def _draw_decorative_shapes(draw, seed, top_color, width, height):
 
 
 def _try_load_font(size):
-    """Try to load a nice font, fall back to default."""
+    """Attempt to load a system font at the given size.
+    Falls back to Pillow's built-in default font if none are found."""
     candidates = [
         "/System/Library/Fonts/Helvetica.ttc",
         "/System/Library/Fonts/SFNSDisplay.ttf",
@@ -106,34 +126,45 @@ def _try_load_font(size):
 
 
 def generate_thumbnail(film_id, title, rating, release_year, category):
+    """Generate and save a single poster thumbnail PNG for a film.
+
+    Args:
+        film_id:      Used as the output filename (<film_id>.png).
+        title:        Film title displayed on the poster.
+        rating:       MPAA rating string (G, PG, PG-13, R, NC-17).
+        release_year: Year displayed below the title.
+        category:     Film category used to pick the colour scheme.
+
+    Returns:
+        The file path of the saved thumbnail image.
+    """
     top_c, bot_c = CATEGORY_COLORS.get(category, DEFAULT_COLORS)
     seed = _seed_from_title(title)
 
     img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 255))
     draw = ImageDraw.Draw(img)
 
-    # Background gradient
+    # Draw the category-coloured gradient background
     _draw_gradient(draw, top_c, bot_c, WIDTH, HEIGHT)
 
-    # Decorative shapes
+    # Composite decorative shapes on a transparent overlay
     overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     overlay_draw = ImageDraw.Draw(overlay)
     _draw_decorative_shapes(overlay_draw, seed, top_c, WIDTH, HEIGHT)
     img = Image.alpha_composite(img, overlay)
     draw = ImageDraw.Draw(img)
 
-    # Dark band at bottom for title
+    # Semi-transparent dark band at the bottom for the title area
     draw.rectangle([(0, HEIGHT - 90), (WIDTH, HEIGHT)], fill=(0, 0, 0, 160))
 
-    # Film icon at top
+    # Film icon emoji at the top centre
     icon_font = _try_load_font(40)
     draw.text((WIDTH // 2, 30), "🎬", font=icon_font, fill=(255, 255, 255, 180), anchor="mt")
 
-    # Title text (wrapped)
+    # Word-wrap the title to fit within the poster width
     title_font = _try_load_font(16)
     small_font = _try_load_font(12)
 
-    # Wrap title
     display_title = title.title()
     words = display_title.split()
     lines = []
@@ -149,29 +180,30 @@ def generate_thumbnail(film_id, title, rating, release_year, category):
             current = test
     if current:
         lines.append(current)
-    lines = lines[:3]  # max 3 lines
+    lines = lines[:3]  # Limit to 3 lines maximum
 
+    # Draw each line of the title
     y_text = HEIGHT - 85
     for line in lines:
         draw.text((WIDTH // 2, y_text), line, font=title_font, fill="white", anchor="mt")
         y_text += 20
 
-    # Year
+    # Release year below the title
     draw.text((WIDTH // 2, HEIGHT - 25), str(release_year), font=small_font, fill=(200, 200, 200), anchor="mt")
 
-    # Rating badge (top right)
+    # Rating badge in the top-right corner
     if rating:
         badge_color = RATING_BADGE.get(rating, (100, 100, 100))
         badge_font = _try_load_font(11)
         bbox = draw.textbbox((0, 0), rating, font=badge_font)
-        bw = bbox[2] - bbox[0] + 12
-        bh = bbox[3] - bbox[1] + 8
-        bx = WIDTH - bw - 8
-        by = 8
+        bw = bbox[2] - bbox[0] + 12  # badge width with padding
+        bh = bbox[3] - bbox[1] + 8   # badge height with padding
+        bx = WIDTH - bw - 8          # position from right edge
+        by = 8                        # position from top edge
         draw.rounded_rectangle([(bx, by), (bx + bw, by + bh)], radius=4, fill=badge_color)
         draw.text((bx + bw // 2, by + bh // 2), rating, font=badge_font, fill="white", anchor="mm")
 
-    # Save as RGB PNG
+    # Convert to RGB (drop alpha) and save
     final = img.convert("RGB")
     out_path = os.path.join(THUMB_DIR, f"{film_id}.png")
     final.save(out_path, "PNG", optimize=True)
@@ -179,8 +211,10 @@ def generate_thumbnail(film_id, title, rating, release_year, category):
 
 
 def main():
+    """Fetch all films from the database and generate a thumbnail for each one."""
     os.makedirs(THUMB_DIR, exist_ok=True)
 
+    # Connect to the database using config.json credentials
     with open(os.path.join(os.path.dirname(__file__), "config.json")) as f:
         cfg = json.load(f)["db"]
 
@@ -191,6 +225,7 @@ def main():
     )
     try:
         with conn.cursor() as cur:
+            # Join with film_category and category to get the category name
             cur.execute("""
                 SELECT f.film_id, f.title, f.rating, f.release_year, c.name AS category
                 FROM film f
@@ -202,6 +237,7 @@ def main():
     finally:
         conn.close()
 
+    # Generate thumbnails with progress reporting every 100 films
     print(f"Generating {len(films)} thumbnails...")
     for i, film in enumerate(films, 1):
         generate_thumbnail(
@@ -214,5 +250,6 @@ def main():
     print(f"Done! {len(films)} thumbnails saved to {THUMB_DIR}")
 
 
+# Run the generator when executed directly
 if __name__ == "__main__":
     main()

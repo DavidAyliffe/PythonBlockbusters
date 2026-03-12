@@ -1,23 +1,31 @@
+<!-- film_detail.html - Detailed film information page.
+     Displays film poster thumbnail, description, metadata (language, duration,
+     rental rate, replacement cost, special features), cast list, per-store
+     inventory availability, and "customers also rented" recommendations.
+-->
 {% extends "base.html" %}
 {% block title %}{{ film.title }} - Blockbusters{% endblock %}
 {% block content %}
+<!-- Back navigation -->
 <a href="{{ url_for('films.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Films</a>
 
 <div class="row">
-    <!-- Thumbnail -->
+    <!-- Film thumbnail poster (with fallback placeholder) -->
     <div class="col-md-3">
         <img src="{{ url_for('static', filename='thumbnails/' ~ film.film_id ~ '.png') }}"
              class="img-fluid rounded shadow"
              style="max-width: 100%;"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <!-- Fallback placeholder shown when thumbnail image fails to load -->
         <div class="thumbnail-placeholder" style="display:none;">
             <i class="bi bi-film"></i>
         </div>
     </div>
 
-    <!-- Details -->
+    <!-- Film details column -->
     <div class="col-md-9">
         <h2>{{ film.title }}</h2>
+        <!-- Metadata badges: rating, year, length, category -->
         <div class="mb-3">
             <span class="badge bg-info me-1">{{ film.rating }}</span>
             <span class="badge bg-secondary me-1">{{ film.release_year }}</span>
@@ -25,8 +33,10 @@
             <span class="badge bg-secondary">{{ film.category or 'Uncategorized' }}</span>
         </div>
 
+        <!-- Film description -->
         <p>{{ film.description }}</p>
 
+        <!-- Detailed film attributes table -->
         <div class="row mb-3">
             <div class="col-md-6">
                 <table class="table table-sm">
@@ -39,7 +49,7 @@
             </div>
         </div>
 
-        <!-- Cast -->
+        <!-- Cast (actors) displayed as badges -->
         <h5>🎭 Cast</h5>
         <div class="mb-3">
             {% for a in actors %}
@@ -49,7 +59,7 @@
             {% endfor %}
         </div>
 
-        <!-- Inventory / Availability -->
+        <!-- Per-store inventory availability table -->
         <h5>🏪 Store Availability</h5>
         <table class="table table-sm">
             <thead>
@@ -77,15 +87,17 @@
     </div>
 </div>
 
-<!-- Recommendations -->
+<!-- "Customers Also Rented" recommendation section -->
 {% if recommendations %}
 <hr class="my-4">
 <h5>🍿 Customers Also Rented</h5>
 <div class="row g-3">
     {% for rec in recommendations %}
     <div class="col-md-2 col-sm-4">
+        <!-- Each recommendation links to its film detail page -->
         <a href="{{ url_for('films.detail', film_id=rec.film_id) }}" class="text-decoration-none">
             <div class="card h-100">
+                <!-- Recommendation thumbnail with fallback -->
                 <img src="{{ url_for('static', filename='thumbnails/' ~ rec.film_id ~ '.png') }}"
                      class="card-img-top" alt="{{ rec.title }}"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">

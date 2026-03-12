@@ -1,7 +1,16 @@
-"""Run once to create the app_users table and default admin account."""
+"""
+setup_db.py - One-time database setup script.
+
+Run this once to:
+  1. Create the app_users table for authentication.
+  2. Add a 'name' column to the store table and assign friendly store names.
+  3. Create the default admin account from config.json credentials.
+  4. Create staff user accounts for all existing staff records.
+"""
 import hashlib
 from db import get_connection, load_config
 
+# Friendly names assigned to stores in order of store_id
 STORE_NAMES = [
     'Action Replay', 'Cinefile', 'Five Star Films', 'Flicks',
     'Flicks & Chill', 'Golden Reel Rentals', 'Hollywood Hits',
@@ -13,10 +22,13 @@ STORE_NAMES = [
     'The Popcorn Stand', 'Tinseltown Treasures', 'Video Paradiso',
 ]
 
+
 def setup():
+    """Run all setup tasks against the database."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # --- 1. Create the app_users authentication table ---
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS app_users (
                     user_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,14 +44,14 @@ def setup():
             """)
             conn.commit()
 
-            # Add name column to store table if not exists
+            # --- 2. Add a 'name' column to the store table if it doesn't exist ---
             cur.execute("SHOW COLUMNS FROM store LIKE 'name'")
             if not cur.fetchone():
                 cur.execute("ALTER TABLE store ADD COLUMN name VARCHAR(100) NULL")
                 conn.commit()
                 print("Added 'name' column to store table.")
 
-            # Assign store names to existing stores
+            # Assign a friendly name to each store (only if the name is currently empty)
             cur.execute("SELECT store_id FROM store ORDER BY store_id")
             stores = cur.fetchall()
             for i, store in enumerate(stores):
@@ -51,12 +63,13 @@ def setup():
             conn.commit()
             print(f"Assigned names to {min(len(stores), len(STORE_NAMES))} stores.")
 
-            # Create default admin
+            # --- 3. Create the default admin account ---
             cfg = load_config()
             admin_user = cfg.get("admin_username", "admin")
             admin_pass = cfg.get("admin_password", "Admin@1234")
             pw_hash = hashlib.sha256(admin_pass.encode()).hexdigest()
 
+            # Check if admin already exists before inserting
             cur.execute("SELECT id FROM v_users WHERE email = %s", (admin_user,))
             if not cur.fetchone():
                 cur.execute(
@@ -68,9 +81,10 @@ def setup():
             else:
                 print("Admin account already exists.")
 
-            # Create accounts for existing staff
+            # --- 4. Create user accounts for all existing staff members ---
             cur.execute("SELECT staff_id, first_name, last_name, email FROM staff")
             for s in cur.fetchall():
+                # Derive username from the part before @ in their email
                 uname = s["email"].split("@")[0].lower()
                 cur.execute("SELECT user_id FROM app_users WHERE staff_id = %s", (s["staff_id"],))
                 if not cur.fetchone():
@@ -86,5 +100,7 @@ def setup():
     finally:
         conn.close()
 
+
+# Run setup when the script is executed directly
 if __name__ == "__main__":
     setup()

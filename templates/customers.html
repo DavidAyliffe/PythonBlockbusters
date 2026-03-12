@@ -1,11 +1,18 @@
+<!-- customers.html - Customer listing page.
+     Accessible to admin and staff roles. Shows all customers in a searchable
+     table with avatar, name, email, store, active status, and action buttons
+     (edit, delete). Admins can deactivate customers.
+-->
 {% extends "base.html" %}
 {% block title %}Customers - Blockbusters{% endblock %}
 {% block content %}
+<!-- Page header with "Add Customer" button -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3>👥 Customers</h3>
     <a href="{{ url_for('customers.add') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Customer</a>
 </div>
 
+<!-- Search form: filters by name or email -->
 <form method="GET" class="mb-3">
     <div class="input-group" style="max-width: 400px;">
         <input type="text" name="search" class="form-control" placeholder="Search by name or email..." value="{{ search }}">
@@ -13,11 +20,12 @@
     </div>
 </form>
 
+<!-- Customer table with scrollable body -->
 <div class="table-scroll">
     <table class="table table-hover">
         <thead class="table-dark sticky-top">
             <tr>
-                <th></th>
+                <th></th><!-- Avatar column -->
                 <th>Name</th>
                 <th>Email</th>
                 <th>Store</th>
@@ -28,10 +36,13 @@
         <tbody>
             {% for c in customers %}
             <tr>
+                <!-- Customer avatar image -->
                 <td><img src="{{ url_for('static', filename='avatars/' ~ c.customer_id ~ '.png') }}" alt="{{ c.first_name }}" class="rounded-circle" width="36" height="36"></td>
+                <!-- Name links to detail page -->
                 <td><a href="{{ url_for('customers.detail', cid=c.customer_id) }}">{{ c.first_name }} {{ c.last_name }}</a></td>
                 <td>{{ c.email }}</td>
                 <td>Store {{ c.store_id }}</td>
+                <!-- Active/inactive status badge -->
                 <td>
                     {% if c.active %}
                     <span class="badge bg-success">✅ Active</span>
@@ -39,6 +50,7 @@
                     <span class="badge bg-secondary">⏸️ Inactive</span>
                     {% endif %}
                 </td>
+                <!-- Action buttons: edit (all staff) and delete (admin only) -->
                 <td>
                     <a href="{{ url_for('customers.edit', cid=c.customer_id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                     {% if current_user.role == 'admin' %}
@@ -50,6 +62,7 @@
                 </td>
             </tr>
             {% else %}
+            <!-- Empty state when no customers match the search -->
             <tr><td colspan="6" class="text-center text-secondary">No customers found.</td></tr>
             {% endfor %}
         </tbody>

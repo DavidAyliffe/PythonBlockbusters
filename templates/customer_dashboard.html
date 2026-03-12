@@ -1,9 +1,17 @@
+<!-- customer_dashboard.html - Customer-specific dashboard.
+     Shown to users with the "customer" role. Displays:
+     - Active rentals count, total rental count, and total amount spent
+     - Table of currently rented films (if any)
+     - Prompt to browse films if no active rentals
+-->
 {% extends "base.html" %}
 {% block title %}My Dashboard - Blockbusters{% endblock %}
 {% block content %}
 <h3 class="mb-4">📊 My Dashboard</h3>
 
+<!-- Customer stat cards -->
 <div class="row g-3 mb-4">
+    <!-- Number of currently active (unreturned) rentals -->
     <div class="col-md-4">
         <div class="card stat-card blue">
             <div class="card-body">
@@ -12,6 +20,7 @@
             </div>
         </div>
     </div>
+    <!-- Lifetime total number of rentals -->
     <div class="col-md-4">
         <div class="card stat-card green">
             <div class="card-body">
@@ -20,6 +29,7 @@
             </div>
         </div>
     </div>
+    <!-- Total amount spent on rentals -->
     <div class="col-md-4">
         <div class="card stat-card purple">
             <div class="card-body">
@@ -30,6 +40,7 @@
     </div>
 </div>
 
+<!-- Currently rented films table (or empty state message) -->
 {% if active_rentals %}
 <h5>🎞️ Currently Rented</h5>
 <div class="table-responsive">
@@ -48,6 +59,7 @@
     </table>
 </div>
 {% else %}
+<!-- Empty state: encourage the customer to browse films -->
 <div class="alert alert-info">🍿 You have no active rentals. <a href="{{ url_for('films.index') }}">Browse films</a> to find something to watch!</div>
 {% endif %}
 {% endblock %}

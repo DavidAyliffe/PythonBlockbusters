@@ -1,12 +1,21 @@
+<!-- rental_form.html - New rental creation form.
+     Allows admin/staff to create a rental by selecting a customer, film, and store.
+     Includes real-time inventory availability checking via AJAX:
+     when a film and store are both selected, it queries the API to show
+     how many copies are available before allowing submission.
+-->
 {% extends "base.html" %}
 {% block title %}New Rental - Blockbusters{% endblock %}
 {% block content %}
+<!-- Back navigation -->
 <a href="{{ url_for('rentals.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back</a>
 <h3>📀 New Rental</h3>
 
+<!-- Rental form card -->
 <div class="card mt-3" style="max-width: 600px;">
     <div class="card-body">
         <form method="POST" id="rentalForm">
+            <!-- Customer selection dropdown -->
             <div class="mb-3">
                 <label class="form-label">Customer</label>
                 <select name="customer_id" class="form-select" id="customerSelect" required>
@@ -16,6 +25,7 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Film selection dropdown -->
             <div class="mb-3">
                 <label class="form-label">Film</label>
                 <select name="film_id" class="form-select" id="filmSelect" required>
@@ -25,6 +35,7 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Store selection dropdown -->
             <div class="mb-3">
                 <label class="form-label">Store</label>
                 <select name="store_id" class="form-select" id="storeSelect" required>
@@ -34,6 +45,7 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Availability indicator (shown/hidden dynamically by JS) -->
             <div id="availabilityInfo" class="mb-3" style="display:none;">
                 <div class="alert alert-info mb-0" id="availabilityMsg"></div>
             </div>
@@ -42,7 +54,9 @@
     </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
+<!-- Real-time inventory availability check script -->
 <script>
 const filmSel = document.getElementById('filmSelect');
 const storeSel = document.getElementById('storeSelect');
@@ -50,25 +64,34 @@ const infoDiv = document.getElementById('availabilityInfo');
 const infoMsg = document.getElementById('availabilityMsg');
 const submitBtn = document.getElementById('submitBtn');
 
+/**
+ * Check inventory availability when both film and store are selected.
+ * Calls the /api/inventory/<film_id>/<store_id> endpoint and updates
+ * the availability message accordingly. Disables submit if no copies available.
+ */
 function checkAvailability() {
     const filmId = filmSel.value;
     const storeId = storeSel.value;
+    // Only check when both are selected
     if (!filmId || !storeId) { infoDiv.style.display = 'none'; return; }
     fetch(`/api/inventory/${filmId}/${storeId}`)
         .then(r => r.json())
         .then(data => {
             infoDiv.style.display = 'block';
             if (data.available > 0) {
+                // Copies available - show success message and enable submit
                 infoMsg.className = 'alert alert-success mb-0';
                 infoMsg.textContent = `${data.available} cop${data.available === 1 ? 'y' : 'ies'} available.`;
                 submitBtn.disabled = false;
             } else {
+                // No copies - show error message and disable submit
                 infoMsg.className = 'alert alert-danger mb-0';
                 infoMsg.textContent = 'No copies available at this store.';
                 submitBtn.disabled = true;
             }
         });
 }
+// Trigger availability check when film or store selection changes
 filmSel.addEventListener('change', checkAvailability);
 storeSel.addEventListener('change', checkAvailability);
 </script>

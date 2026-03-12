@@ -1,7 +1,15 @@
+<!-- customer_form.html - Add/edit customer form.
+     Used for both creating new customers and editing existing ones.
+     The 'editing' flag controls which fields are shown:
+     - Edit mode: shows active checkbox, hides username/password fields
+     - Add mode: shows username/password fields for account creation
+-->
 {% extends "base.html" %}
 {% block title %}{{ 'Edit' if editing else 'Add' }} Customer - Blockbusters{% endblock %}
 {% block content %}
+<!-- Back button -->
 <a href="{{ url_for('customers.index') }}" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back</a>
+<!-- Page heading with avatar (shown in edit mode only) -->
 <div class="d-flex align-items-center gap-3">
     {% if editing %}
     <img src="{{ url_for('static', filename='avatars/' ~ customer.customer_id ~ '.png') }}" alt="{{ customer.first_name }}" class="rounded-circle" width="56" height="56">
@@ -9,9 +17,11 @@
     <h3 class="mb-0">👤 {{ 'Edit' if editing else 'Add' }} Customer</h3>
 </div>
 
+<!-- Customer form card -->
 <div class="card mt-3" style="max-width: 600px;">
     <div class="card-body">
         <form method="POST">
+            <!-- First and last name (side by side) -->
             <div class="row mb-3">
                 <div class="col">
                     <label class="form-label">First Name</label>
@@ -22,10 +32,12 @@
                     <input type="text" name="last_name" class="form-control" value="{{ customer.last_name if editing else '' }}" required>
                 </div>
             </div>
+            <!-- Email input -->
             <div class="mb-3">
                 <label class="form-label">Email</label>
                 <input type="email" name="email" class="form-control" value="{{ customer.email if editing else '' }}" required>
             </div>
+            <!-- Store selection dropdown -->
             <div class="mb-3">
                 <label class="form-label">Store</label>
                 <select name="store_id" class="form-select">
@@ -35,11 +47,13 @@
                 </select>
             </div>
             {% if editing %}
+            <!-- Active status checkbox (edit mode only) -->
             <div class="mb-3 form-check">
                 <input type="checkbox" name="active" class="form-check-input" id="active" {% if customer.active %}checked{% endif %}>
                 <label class="form-check-label" for="active">Active</label>
             </div>
             {% else %}
+            <!-- Username and password fields (add mode only) -->
             <div class="mb-3">
                 <label class="form-label">Username</label>
                 <input type="text" name="username" class="form-control" required>

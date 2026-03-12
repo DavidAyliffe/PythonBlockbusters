@@ -1,14 +1,23 @@
+"""
+routes/customers.py - Customer management routes.
+
+Provides CRUD operations for customer records. Accessible to admin and staff roles.
+Includes customer listing with search, detailed profile view with rental stats,
+add/edit forms, and soft-delete (deactivation) for admins.
+"""
 import bcrypt
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from routes.auth import role_required, validate_email, validate_password
 from db import query, execute
 
+# Blueprint for all customer-related routes
 customers_bp = Blueprint("customers", __name__)
 
 
 @customers_bp.route("/customers")
 @role_required("admin", "staff")
 def index():
+    """Display the customer list with optional search filtering by name or email."""
     search = request.args.get("search", "").strip()
     sql = """
         SELECT c.customer_id, c.first_name, c.last_name, c.email, c.active,
@@ -28,6 +37,8 @@ def index():
 @customers_bp.route("/customers/<int:cid>")
 @role_required("admin", "staff")
 def detail(cid):
+    """Show a detailed customer profile with rental history and statistics."""
+    # Fetch the customer record with store and address info
     customer = query(
         """SELECT c.*, s.name AS store_name,
                   a.address, ci.city
@@ -41,6 +52,7 @@ def detail(cid):
     if not customer:
         return "Customer not found", 404
 
+    # Gather rental statistics for this customer
     total_rentals = query(
         "SELECT COUNT(*) AS cnt FROM rental WHERE customer_id = %s",
         (cid,), one=True,
@@ -53,6 +65,7 @@ def detail(cid):
         "SELECT COALESCE(SUM(amount), 0) AS total FROM payment WHERE customer_id = %s",
         (cid,), one=True,
     )
+    # Find the customer's most-rented film category
     favorite_category = query(
         """SELECT c.name AS category, COUNT(*) AS cnt
            FROM rental r
@@ -64,6 +77,7 @@ def detail(cid):
            ORDER BY cnt DESC LIMIT 1""",
         (cid,), one=True,
     )
+    # Fetch the 50 most recent rentals with film and payment details
     rentals = query(
         """SELECT r.rental_id, r.rental_date, r.returned_date,
                   f.title, f.film_id,
@@ -76,6 +90,7 @@ def detail(cid):
            ORDER BY r.rental_date DESC LIMIT 50""",
         (cid,),
     )
+    # Top 5 categories by rental count for the sidebar chart
     top_categories = query(
         """SELECT c.name AS category, COUNT(*) AS cnt
            FROM rental r
@@ -102,6 +117,7 @@ def detail(cid):
 @customers_bp.route("/customers/add", methods=["GET", "POST"])
 @role_required("admin", "staff")
 def add():
+    """Show the add-customer form (GET) or create a new customer record (POST)."""
     stores = query("SELECT store_id FROM store ORDER BY store_id")
     if request.method == "POST":
         first = request.form["first_name"].strip()
@@ -111,6 +127,7 @@ def add():
         username = request.form["username"].strip()
         password = request.form["password"]
 
+        # Validate input
         errors = []
         if not first or not last:
             errors.append("First and last name are required.")
@@ -125,12 +142,14 @@ def add():
                 flash(e, "danger")
             return render_template("customer_form.html", stores=stores, editing=False)
 
+        # Insert the customer record (uses first available address as default)
         address_id = query("SELECT address_id FROM address LIMIT 1", one=True)["address_id"]
         cust_id = execute(
             """INSERT INTO customer (store_id, first_name, last_name, email, address_id, active)
                VALUES (%s, %s, %s, %s, %s, 1)""",
             (store_id, first, last, email, address_id),
         )
+        # Create the login account with bcrypt-hashed password
         pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         execute(
             "INSERT INTO app_users (username, password_hash, role, customer_id) VALUES (%s, %s, 'customer', %s)",
@@ -145,6 +164,7 @@ def add():
 @customers_bp.route("/customers/<int:cid>/edit", methods=["GET", "POST"])
 @role_required("admin", "staff")
 def edit(cid):
+    """Show the edit-customer form (GET) or update an existing customer (POST)."""
     customer = query("SELECT * FROM customer WHERE customer_id = %s", (cid,), one=True)
     if not customer:
         return "Customer not found", 404
@@ -157,6 +177,7 @@ def edit(cid):
         store_id = request.form["store_id"]
         active = 1 if request.form.get("active") else 0
 
+        # Validate input
         errors = []
         if not first or not last:
             errors.append("First and last name are required.")
@@ -167,6 +188,7 @@ def edit(cid):
                 flash(e, "danger")
             return render_template("customer_form.html", stores=stores, customer=customer, editing=True)
 
+        # Update the customer record
         execute(
             """UPDATE customer SET store_id=%s, first_name=%s, last_name=%s, email=%s, active=%s
                WHERE customer_id=%s""",
@@ -181,6 +203,7 @@ def edit(cid):
 @customers_bp.route("/customers/<int:cid>/delete", methods=["POST"])
 @role_required("admin")
 def delete(cid):
+    """Soft-delete a customer: remove their login account and mark them inactive."""
     execute("DELETE FROM app_users WHERE customer_id = %s", (cid,))
     execute("UPDATE customer SET active = 0 WHERE customer_id = %s", (cid,))
     flash("Customer deactivated.", "info")

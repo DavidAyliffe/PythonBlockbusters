@@ -1,19 +1,27 @@
+<!-- films.html - Film catalogue listing page.
+     Displays all films in a searchable, filterable table.
+     Filters: text search (title/description), category, rating, year.
+     Each row is clickable and navigates to the film detail page.
+-->
 {% extends "base.html" %}
 {% block title %}Films - Blockbusters{% endblock %}
 {% block content %}
+<!-- Page header with result count badge -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3>🎥 Films</h3>
     <span class="badge bg-secondary">{{ films|length }} results</span>
 </div>
 
-<!-- Filters -->
+<!-- Filter card with search and dropdown filters -->
 <div class="card mb-4">
     <div class="card-body">
         <form method="GET" class="row g-3 align-items-end">
+            <!-- Text search input -->
             <div class="col-md-3">
                 <label class="form-label">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Title or description..." value="{{ search }}">
             </div>
+            <!-- Category filter dropdown -->
             <div class="col-md-2">
                 <label class="form-label">Category</label>
                 <select name="category" class="form-select">
@@ -23,6 +31,7 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Rating filter dropdown -->
             <div class="col-md-2">
                 <label class="form-label">Rating</label>
                 <select name="rating" class="form-select">
@@ -32,6 +41,7 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Year filter dropdown -->
             <div class="col-md-2">
                 <label class="form-label">Year</label>
                 <select name="year" class="form-select">
@@ -41,6 +51,7 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Filter and clear buttons -->
             <div class="col-md-3">
                 <button class="btn btn-primary me-2" type="submit"><i class="bi bi-search me-1"></i>Filter</button>
                 <a href="{{ url_for('films.index') }}" class="btn btn-outline-secondary">Clear</a>
@@ -49,7 +60,7 @@
     </div>
 </div>
 
-<!-- Film list -->
+<!-- Film results table (clickable rows navigate to detail page) -->
 <div class="table-scroll">
     <table class="table table-hover">
         <thead class="table-dark sticky-top">
@@ -64,6 +75,7 @@
         </thead>
         <tbody>
             {% for f in films %}
+            <!-- Entire row is clickable via onclick -->
             <tr style="cursor:pointer" onclick="window.location='{{ url_for('films.detail', film_id=f.film_id) }}'">
                 <td><strong>{{ f.title }}</strong></td>
                 <td>{{ f.category or '—' }}</td>
@@ -73,6 +85,7 @@
                 <td>${{ "%.2f"|format(f.rental_rate) }}</td>
             </tr>
             {% else %}
+            <!-- Empty state -->
             <tr><td colspan="6" class="text-center text-secondary">🔍 No films found.</td></tr>
             {% endfor %}
         </tbody>

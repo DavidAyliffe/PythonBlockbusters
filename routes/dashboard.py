@@ -1,7 +1,15 @@
+"""
+routes/dashboard.py - Dashboard routes and statistics API.
+
+Provides the main dashboard view (with role-based content), a JSON API
+for fetching dashboard statistics and chart data, and detail views for
+drilling down into specific metrics (today's rentals, revenue, etc.).
+"""
 from flask import Blueprint, render_template, jsonify, session
 from routes.auth import login_required, get_current_user
 from db import query
 
+# Blueprint for dashboard-related routes
 dashboard_bp = Blueprint("dashboard", __name__)
 
 
@@ -9,6 +17,8 @@ dashboard_bp = Blueprint("dashboard", __name__)
 @dashboard_bp.route("/dashboard")
 @login_required
 def index():
+    """Main dashboard page. Customers see their personal dashboard;
+    admin/staff see the full analytics dashboard."""
     user = get_current_user()
     if user["role"] == "customer":
         return _customer_dashboard(user)
@@ -16,6 +26,9 @@ def index():
 
 
 def _customer_dashboard(user):
+    """Render the customer-specific dashboard showing their active rentals,
+    total rental count, and total amount spent."""
+    # Get all currently active (unreturned) rentals for this customer
     active = query(
         """SELECT r.rental_id, r.rental_date, f.title
            FROM rental r
@@ -25,10 +38,12 @@ def _customer_dashboard(user):
            ORDER BY r.rental_date DESC""",
         (user["customer_id"],),
     )
+    # Total number of rentals ever made by this customer
     history_count = query(
         "SELECT COUNT(*) AS cnt FROM rental WHERE customer_id = %s",
         (user["customer_id"],), one=True,
     )
+    # Total amount spent on payments
     total_spent = query(
         "SELECT COALESCE(SUM(amount),0) AS total FROM payment WHERE customer_id = %s",
         (user["customer_id"],), one=True,
@@ -42,17 +57,21 @@ def _customer_dashboard(user):
 @dashboard_bp.route("/api/dashboard/stats")
 @login_required
 def stats():
+    """JSON API endpoint returning all dashboard statistics and chart data.
+    Only accessible to admin and staff users (customers get a 403)."""
     user = get_current_user()
     if user["role"] == "customer":
         return jsonify({}), 403
 
+    # --- Key metrics ---
     today_rentals = query("SELECT COUNT(*) AS cnt FROM rental WHERE DATE(rental_date) = CURDATE()", one=True)
     today_revenue = query("SELECT COALESCE(SUM(amount),0) AS total FROM payment WHERE DATE(payment_date) = CURDATE()",one=True)
-    
+
     total_rentals = query("SELECT COUNT(*) AS cnt FROM rental", one=True)
     total_revenue = query("SELECT COALESCE(SUM(amount),0) AS total FROM payment", one=True)
-    
+
     active_rentals = query("SELECT COUNT(*) AS cnt FROM rental WHERE returned_date IS NULL", one=True)
+    # Overdue rentals: unreturned and past the film's rental_duration
     overdue = query(
         """SELECT COUNT(*) AS cnt FROM rental r
            JOIN inventory i ON r.inventory_id = i.inventory_id
@@ -65,7 +84,9 @@ def stats():
     total_films = query("SELECT COUNT(*) AS cnt FROM film", one=True)
     total_inventory = query("SELECT COUNT(*) AS cnt FROM inventory", one=True)
 
-    # Top 10 films
+    # --- Chart data ---
+
+    # Top 10 most rented films
     top_films = query(
         """SELECT f.title, COUNT(r.rental_id) AS rentals
            FROM rental r
@@ -75,7 +96,7 @@ def stats():
            ORDER BY rentals DESC LIMIT 10"""
     )
 
-    # Rentals by category
+    # Rental counts grouped by film category
     by_category = query(
         """SELECT c.name AS category, COUNT(r.rental_id) AS rentals
            FROM rental r
@@ -85,14 +106,14 @@ def stats():
            GROUP BY c.category_id, c.name
            ORDER BY rentals DESC""")
 
-    # Revenue last 7 days (or months if no recent data)
+    # Daily revenue for the last 30 days (used by the revenue trend chart)
     revenue_trend = query(
         """SELECT DATE(payment_date) AS day, SUM(amount) AS total
            FROM payment
            GROUP BY DATE(payment_date)
            ORDER BY day DESC LIMIT 30""")
 
-    # Rentals by store
+    # Rental counts grouped by store
     by_store = query(
         """SELECT s.store_id, COUNT(r.rental_id) AS rentals
            FROM rental r
@@ -100,7 +121,7 @@ def stats():
            JOIN store s ON i.store_id = s.store_id
            GROUP BY s.store_id ORDER BY s.store_id""")
 
-    # Inventory by rating
+    # Inventory item counts grouped by film rating
     by_rating = query(
         """SELECT f.rating, COUNT(i.inventory_id) AS count
            FROM inventory i

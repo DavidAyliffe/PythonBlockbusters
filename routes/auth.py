@@ -1,12 +1,23 @@
+"""
+routes/auth.py - Authentication routes and helpers.
+
+Handles user login, registration, logout, and provides decorators
+for protecting routes by login status or user role.
+"""
 import re
 import hashlib
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from db import query, execute
 
+# Blueprint for all authentication-related routes
 auth_bp = Blueprint("auth", __name__)
 
 
 def validate_password(pw):
+    """Validate password strength. Returns a list of error messages (empty if valid).
+
+    Requirements: min 8 chars, uppercase, lowercase, digit, special character.
+    """
     errors = []
     if len(pw) < 8:
         errors.append("Password must be at least 8 characters.")
@@ -22,10 +33,12 @@ def validate_password(pw):
 
 
 def validate_email(email):
+    """Check whether the given string looks like a valid email address."""
     return re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email)
 
 
 def get_current_user():
+    """Return the currently logged-in user's record, or None if not authenticated."""
     uid = session.get("user_id")
     if not uid:
         return None
@@ -33,6 +46,11 @@ def get_current_user():
 
 
 def role_required(*roles):
+    """Decorator that restricts a route to users with one of the specified roles.
+
+    Usage: @role_required("admin", "staff")
+    Redirects to login if not authenticated, or to dashboard if insufficient role.
+    """
     from functools import wraps
 
     def decorator(f):
@@ -51,6 +69,10 @@ def role_required(*roles):
 
 
 def login_required(f):
+    """Decorator that restricts a route to any authenticated user.
+
+    Redirects to the login page if the user is not logged in.
+    """
     from functools import wraps
 
     @wraps(f)
@@ -62,13 +84,18 @@ def login_required(f):
     return wrapped
 
 
+# --- Routes ---
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    """Handle the login page. GET shows the form, POST authenticates the user."""
     if request.method == "POST":
         username = request.form["username"].strip()
         password = request.form["password"]
+        # Look up the user and verify the password hash
         user = query("SELECT * FROM v_users WHERE username = %s", (username,), one=True)
         if user and hashlib.sha256(password.encode()).hexdigest() == user["password_hash"]:
+            # Store user info in the session
             session["user_id"] = user["id"]
             session["role"] = user["role"]
             session["username"] = user["username"]
@@ -80,6 +107,7 @@ def login():
 
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
+    """Handle the registration page. Creates a new customer account."""
     if request.method == "POST":
         username = request.form["username"].strip()
         email = request.form["email"].strip()
@@ -88,6 +116,7 @@ def register():
         first_name = request.form["first_name"].strip()
         last_name = request.form["last_name"].strip()
 
+        # Validate all input fields
         errors = []
         if not username:
             errors.append("Username is required.")
@@ -104,7 +133,7 @@ def register():
                 flash(e, "danger")
             return render_template("register.html")
 
-        # Create customer record
+        # Create a new customer record (uses first available address and store)
         address_id = query("SELECT address_id FROM address LIMIT 1", one=True)["address_id"]
         store_id = query("SELECT store_id FROM store LIMIT 1", one=True)["store_id"]
         execute(
@@ -112,11 +141,13 @@ def register():
                VALUES (%s, %s, %s, %s, %s, 1)""",
             (store_id, first_name, last_name, email, address_id),
         )
+        # Retrieve the newly created customer's ID
         customer_id = query(
             "SELECT customer_id FROM customer WHERE email = %s ORDER BY customer_id DESC LIMIT 1",
             (email,), one=True
         )["customer_id"]
 
+        # Create the corresponding app_users login record
         pw_hash = hashlib.sha256(password.encode()).hexdigest()
         execute(
             "INSERT INTO app_users (username, password_hash, role, customer_id) VALUES (%s, %s, 'customer', %s)",
@@ -130,6 +161,7 @@ def register():
 
 @auth_bp.route("/logout")
 def logout():
+    """Log the user out by clearing the session and redirecting to login."""
     session.clear()
     flash("Logged out.", "info")
     return redirect(url_for("auth.login"))

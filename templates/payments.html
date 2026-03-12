@@ -1,24 +1,35 @@
+<!-- payments.html - Payment history listing page.
+     Accessible to admin and staff roles. Displays a searchable, date-filterable
+     table of payment records showing customer, film, store, amount, and date.
+     Includes a summary bar showing the count and total of displayed payments.
+-->
 {% extends "base.html" %}
 {% block title %}Payments - Blockbusters{% endblock %}
 {% block content %}
 <h3 class="mb-4">💳 Payment History</h3>
 
+<!-- Filter form: text search + date range -->
 <form method="GET" class="row g-2 mb-3 align-items-end">
+    <!-- Text search (customer name or film title) -->
     <div class="col-md-3">
         <label class="form-label small text-secondary">Search</label>
         <input type="text" name="search" class="form-control" placeholder="Customer or film..." value="{{ search }}">
     </div>
+    <!-- Date range: from -->
     <div class="col-md-2">
         <label class="form-label small text-secondary">From</label>
         <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
     </div>
+    <!-- Date range: to -->
     <div class="col-md-2">
         <label class="form-label small text-secondary">To</label>
         <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
     </div>
+    <!-- Filter button -->
     <div class="col-md-2">
         <button class="btn btn-primary w-100" type="submit"><i class="bi bi-search me-1"></i>Filter</button>
     </div>
+    <!-- Clear filters button (shown only when filters are active) -->
     {% if search or date_from or date_to %}
     <div class="col-md-2">
         <a href="{{ url_for('payments.index') }}" class="btn btn-outline-secondary w-100">Clear</a>
@@ -26,6 +37,7 @@
     {% endif %}
 </form>
 
+<!-- Summary bar: payment count and total amount -->
 <div class="card mb-3">
     <div class="card-body py-2 d-flex justify-content-between">
         <span class="text-secondary">Showing {{ payments|length }} payments</span>
@@ -33,6 +45,7 @@
     </div>
 </div>
 
+<!-- Payments table -->
 <div class="table-scroll">
     <table class="table table-hover">
         <thead class="table-dark sticky-top">
@@ -49,13 +62,17 @@
             {% for p in payments %}
             <tr>
                 <td>{{ p.payment_id }}</td>
+                <!-- Customer name links to their detail page -->
                 <td><a href="{{ url_for('customers.detail', cid=p.customer_id) }}">{{ p.customer_name }}</a></td>
+                <!-- Film title links to the film detail page -->
                 <td><a href="{{ url_for('films.detail', film_id=p.film_id) }}">{{ p.title }}</a></td>
+                <!-- Store name with icon -->
                 <td>{{ p.store_name|store_icon }} {{ p.store_name }}</td>
                 <td>${{ "%.2f"|format(p.amount) }}</td>
                 <td>{{ p.payment_date.strftime('%Y-%m-%d %H:%M') if p.payment_date else '—' }}</td>
             </tr>
             {% else %}
+            <!-- Empty state -->
             <tr><td colspan="6" class="text-center text-secondary">No payments found.</td></tr>
             {% endfor %}
         </tbody>

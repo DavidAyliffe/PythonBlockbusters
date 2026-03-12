@@ -1,18 +1,28 @@
+"""
+routes/films.py - Film catalogue routes.
+
+Provides the film listing page with search and filtering (by category, rating,
+year), and a detailed film view showing description, cast, store availability,
+and "customers also rented" recommendations.
+"""
 from flask import Blueprint, render_template, request
 from routes.auth import login_required
 from db import query
 
+# Blueprint for film-related routes
 films_bp = Blueprint("films", __name__)
 
 
 @films_bp.route("/films")
 @login_required
 def index():
+    """Display the film catalogue with optional search and filter parameters."""
     search = request.args.get("search", "").strip()
     category = request.args.get("category", "")
     rating = request.args.get("rating", "")
     year = request.args.get("year", "")
 
+    # Build the query dynamically based on active filters
     sql = """
         SELECT DISTINCT f.film_id, f.title, f.release_year, f.rating, f.rental_rate,
                f.length, c.name AS category
@@ -23,15 +33,19 @@ def index():
     """
     args = []
 
+    # Text search across title and description
     if search:
         sql += " AND (f.title LIKE %s OR f.description LIKE %s)"
         args.extend([f"%{search}%", f"%{search}%"])
+    # Filter by category name
     if category:
         sql += " AND c.name = %s"
         args.append(category)
+    # Filter by MPAA rating
     if rating:
         sql += " AND f.rating = %s"
         args.append(rating)
+    # Filter by release year
     if year:
         sql += " AND f.release_year = %s"
         args.append(year)
@@ -39,6 +53,7 @@ def index():
     sql += " ORDER BY f.title"
     films = query(sql, args)
 
+    # Fetch filter options for the dropdowns
     categories = query("SELECT name FROM category ORDER BY name")
     ratings = query("SELECT DISTINCT rating FROM film ORDER BY rating")
     years = query("SELECT DISTINCT release_year FROM film ORDER BY release_year DESC")
@@ -52,6 +67,8 @@ def index():
 @films_bp.route("/films/<int:film_id>")
 @login_required
 def detail(film_id):
+    """Show detailed information about a single film."""
+    # Fetch the film with its category and language
     film = query(
         """SELECT f.*, c.name AS category, l.name AS language
            FROM film f
@@ -64,6 +81,7 @@ def detail(film_id):
     if not film:
         return "Film not found", 404
 
+    # Fetch the cast (actors) for this film
     actors = query(
         """SELECT a.first_name, a.last_name
            FROM actor a
@@ -72,6 +90,7 @@ def detail(film_id):
         (film_id,),
     )
 
+    # Fetch inventory availability per store (total copies and available copies)
     inventory = query(
         """SELECT s.store_id,
                   a.address AS store_address,
@@ -89,6 +108,7 @@ def detail(film_id):
         (film_id,),
     )
 
+    # "Customers also rented" recommendations based on co-rental patterns
     recommendations = query(
         """SELECT f2.film_id, f2.title, COUNT(*) AS overlap
            FROM rental r1
