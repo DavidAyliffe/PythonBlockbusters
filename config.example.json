@@ -1,0 +1,19 @@
+{
+  "_comment": "Copy this file to config.json and replace the placeholder values with your actual credentials.",
+
+  "db": {
+    "_comment": "Database connection settings for MySQL",
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "your-password",
+    "database": "your_database"
+  },
+
+  "_secret_key_comment": "Used for session signing and token generation. Replace with a strong random string.",
+  "secret_key": "change-this-to-a-random-secret-key",
+
+  "_admin_comment": "Default admin account credentials. Change these before deploying to production.",
+  "admin_username": "admin",
+  "admin_password": "Admin@1234"
+}
